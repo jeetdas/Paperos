@@ -30,10 +30,25 @@ async function initializeDatabase() {
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    console.log('Creating highlights table if it doesn\'t exist...'); // Debug log
+    // Create the highlights table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS highlights (
+        id SERIAL PRIMARY KEY,
+        document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+        section_index INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        range_start INTEGER NOT NULL,
+        range_end INTEGER NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Error initializing database:', error);
-    throw error; // Propagate the error
+    throw error;
   } finally {
     client.release();
   }
@@ -139,10 +154,123 @@ async function getRecentDocuments(limit = 10) {
   }
 }
 
+// Save a highlight
+async function saveHighlight(documentId, sectionIndex, text, rangeStart, rangeEnd) {
+  const client = await pool.connect();
+  try {
+    console.log('Saving highlight:', {
+      documentId,
+      sectionIndex,
+      text: text.substring(0, 50) + (text.length > 50 ? '...' : ''),
+      rangeStart,
+      rangeEnd
+    });
+
+    // Verify document exists
+    const docCheck = await client.query(
+      'SELECT id FROM documents WHERE id = $1',
+      [documentId]
+    );
+
+    if (docCheck.rows.length === 0) {
+      throw new Error(`Document with ID ${documentId} not found`);
+    }
+
+    const result = await client.query(
+      `INSERT INTO highlights 
+       (document_id, section_index, text, range_start, range_end)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, created_at`,
+      [documentId, sectionIndex, text, rangeStart, rangeEnd]
+    );
+
+    console.log('Highlight saved successfully:', result.rows[0]);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error saving highlight:', {
+      error: error.message,
+      documentId,
+      sectionIndex
+    });
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Get highlights for a document
+async function getHighlights(documentId) {
+  const client = await pool.connect();
+  try {
+    console.log('Fetching highlights for document:', documentId);
+
+    // Verify document exists
+    const docCheck = await client.query(
+      'SELECT id FROM documents WHERE id = $1',
+      [documentId]
+    );
+
+    if (docCheck.rows.length === 0) {
+      throw new Error(`Document with ID ${documentId} not found`);
+    }
+
+    const result = await client.query(
+      `SELECT * FROM highlights 
+       WHERE document_id = $1 
+       ORDER BY section_index, range_start`,
+      [documentId]
+    );
+
+    console.log(`Found ${result.rows.length} highlights for document ${documentId}`);
+    return result.rows;
+  } catch (error) {
+    console.error('Error getting highlights:', {
+      error: error.message,
+      documentId
+    });
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Delete a highlight
+async function deleteHighlight(highlightId) {
+  const client = await pool.connect();
+  try {
+    console.log('Deleting highlight:', highlightId);
+
+    const result = await client.query(
+      `DELETE FROM highlights 
+       WHERE id = $1 
+       RETURNING id, document_id`,
+      [highlightId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error(`Highlight with ID ${highlightId} not found`);
+    }
+
+    console.log('Highlight deleted successfully:', highlightId);
+    return true;
+  } catch (error) {
+    console.error('Error deleting highlight:', {
+      error: error.message,
+      highlightId
+    });
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   pool,
   initializeDatabase,
   saveDocument,
   getDocumentByUrl,
-  getRecentDocuments
+  getRecentDocuments,
+  saveHighlight,
+  getHighlights,
+  deleteHighlight
 }; 

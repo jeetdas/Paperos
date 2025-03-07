@@ -223,6 +223,24 @@ function showError(message) {
     resultCard.scrollIntoView({ behavior: 'smooth' });
 }
 
+// Create highlight popup
+const highlightPopup = document.createElement('div');
+highlightPopup.className = 'highlight-popup';
+highlightPopup.innerHTML = `
+    <button class="highlight-button highlight-add">
+        <i class="fa-solid fa-highlighter"></i>
+        Highlight
+    </button>
+    <button class="highlight-button highlight-remove" style="display: none">
+        <i class="fa-solid fa-eraser"></i>
+        Remove
+    </button>
+`;
+document.body.appendChild(highlightPopup);
+
+let currentHighlight = null;
+let currentDocumentId = null;
+
 function displayResults(result) {
     const markdownContent = document.getElementById('markdown-content');
     const resultCard = document.getElementById('result-card');
@@ -345,6 +363,15 @@ function displayResults(result) {
         
         // Add keyboard navigation
         document.addEventListener('keydown', handleKeyboardNavigation);
+        
+        // Store document ID for highlights
+        currentDocumentId = result.metadata.id;
+        
+        // Load existing highlights
+        loadHighlights(currentDocumentId);
+        
+        // Set up highlight handlers
+        setupHighlightHandlers(markdownContent);
     } else {
         markdownContent.innerHTML = '<p>No content could be extracted from this document. Please try another URL.</p>';
     }
@@ -367,8 +394,19 @@ function switchSection(index) {
     prevButton.disabled = index === 0;
     nextButton.disabled = index === sections.length - 1;
     
-    // Smooth scroll to the top of the new section
-    sections[index].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Find the section header within the active section and scroll to it
+    const activeSection = sections[index];
+    const sectionHeader = activeSection.querySelector('.section-nav-header');
+    
+    // Calculate the header position relative to the viewport
+    const headerRect = sectionHeader.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    
+    // Scroll to the header with some padding
+    window.scrollTo({
+        top: scrollTop + headerRect.top - 100, // 100px padding from top
+        behavior: 'smooth'
+    });
 }
 
 function handleKeyboardNavigation(e) {
@@ -450,6 +488,314 @@ async function reindexDocument(url) {
     } catch (error) {
         console.error('Error reindexing document:', error);
     }
+}
+
+function setupHighlightHandlers(container) {
+    // Handle text selection
+    container.addEventListener('mouseup', handleTextSelection);
+    container.addEventListener('touchend', handleTextSelection);
+    
+    // Handle clicks on highlighted text
+    container.addEventListener('click', handleHighlightClick);
+    container.addEventListener('touchend', handleHighlightClick);
+    
+    // Hide popup when clicking/touching outside
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    
+    // Set up highlight buttons
+    const addButton = highlightPopup.querySelector('.highlight-add');
+    const removeButton = highlightPopup.querySelector('.highlight-remove');
+    
+    addButton.addEventListener('click', createHighlight);
+    removeButton.addEventListener('click', removeHighlight);
+    
+    // Prevent text selection when tapping buttons on mobile
+    addButton.addEventListener('touchstart', (e) => e.preventDefault());
+    removeButton.addEventListener('touchstart', (e) => e.preventDefault());
+}
+
+function handleOutsideClick(e) {
+    if (!highlightPopup.contains(e.target) && !e.target.closest('.highlighted-text')) {
+        hideHighlightPopup();
+    }
+}
+
+function handleTextSelection(e) {
+    // Don't show popup if the event is from a highlight button
+    if (e.target.closest('.highlight-button')) {
+        return;
+    }
+    
+    const selection = window.getSelection();
+    const selectedText = selection.toString().trim();
+    
+    if (!selectedText) {
+        return;
+    }
+    
+    // Don't show popup if selection is within a highlight
+    if (e.target.closest('.highlighted-text')) {
+        return;
+    }
+    
+    // For touch events, wait a bit to ensure the selection is complete
+    if (e.type === 'touchend') {
+        setTimeout(() => {
+            const updatedSelection = window.getSelection();
+            const updatedText = updatedSelection.toString().trim();
+            
+            if (updatedText) {
+                const range = updatedSelection.getRangeAt(0);
+                showHighlightPopup(range.getBoundingClientRect(), false);
+                currentHighlight = {
+                    range,
+                    text: updatedText,
+                    sectionIndex: getCurrentSectionIndex()
+                };
+            }
+        }, 100);
+    } else {
+        const range = selection.getRangeAt(0);
+        showHighlightPopup(range.getBoundingClientRect(), false);
+        currentHighlight = {
+            range,
+            text: selectedText,
+            sectionIndex: getCurrentSectionIndex()
+        };
+    }
+    
+    // Prevent default behavior on touch devices
+    if (e.type === 'touchend') {
+        e.preventDefault();
+    }
+}
+
+function handleHighlightClick(e) {
+    const highlightEl = e.target.closest('.highlighted-text');
+    if (!highlightEl) return;
+    
+    const rect = highlightEl.getBoundingClientRect();
+    showHighlightPopup(rect, true);
+    currentHighlight = {
+        element: highlightEl,
+        id: highlightEl.dataset.highlightId
+    };
+}
+
+function showHighlightPopup(rect, isExisting) {
+    highlightPopup.classList.add('active');
+    highlightPopup.querySelector('.highlight-add').style.display = isExisting ? 'none' : 'flex';
+    highlightPopup.querySelector('.highlight-remove').style.display = isExisting ? 'flex' : 'none';
+}
+
+function hideHighlightPopup() {
+    highlightPopup.classList.remove('active');
+    currentHighlight = null;
+}
+
+async function createHighlight() {
+    if (!currentHighlight || !currentDocumentId) {
+        console.error('Missing required data:', { currentHighlight, currentDocumentId });
+        return;
+    }
+    
+    const { range, text, sectionIndex } = currentHighlight;
+    
+    // Get the container node (section content)
+    const section = document.querySelector(`#section-${sectionIndex}`);
+    if (!section) {
+        console.error('Section not found:', sectionIndex);
+        return;
+    }
+    
+    // Calculate absolute position within the section
+    const textNodes = getAllTextNodes(section);
+    let rangeStart = 0;
+    let foundStart = false;
+    
+    for (const node of textNodes) {
+        if (node === range.startContainer) {
+            rangeStart += range.startOffset;
+            foundStart = true;
+            break;
+        }
+        rangeStart += node.textContent.length;
+    }
+    
+    if (!foundStart) {
+        console.error('Could not find range start position');
+        return;
+    }
+    
+    const rangeEnd = rangeStart + text.length;
+    
+    console.log('Creating highlight:', {
+        documentId: currentDocumentId,
+        sectionIndex,
+        text,
+        rangeStart,
+        rangeEnd
+    });
+    
+    try {
+        const response = await fetch('/api/highlights', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                documentId: currentDocumentId,
+                sectionIndex,
+                text,
+                rangeStart,
+                rangeEnd
+            })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to save highlight');
+        }
+        
+        const highlight = await response.json();
+        console.log('Highlight saved successfully:', highlight);
+        
+        // Create highlight element
+        const span = document.createElement('span');
+        span.className = 'highlighted-text';
+        span.dataset.highlightId = highlight.id;
+        span.textContent = text;
+        
+        range.deleteContents();
+        range.insertNode(span);
+        
+        hideHighlightPopup();
+    } catch (error) {
+        console.error('Error creating highlight:', error);
+    }
+}
+
+async function removeHighlight() {
+    if (!currentHighlight) return;
+    
+    try {
+        await fetch(`/api/highlights/${currentHighlight.id}`, {
+            method: 'DELETE'
+        });
+        
+        // Remove highlight element
+        const text = currentHighlight.element.textContent;
+        const textNode = document.createTextNode(text);
+        currentHighlight.element.parentNode.replaceChild(textNode, currentHighlight.element);
+        
+        hideHighlightPopup();
+    } catch (error) {
+        console.error('Error removing highlight:', error);
+    }
+}
+
+async function loadHighlights(documentId) {
+    if (!documentId) {
+        console.error('Document ID is required to load highlights');
+        return;
+    }
+
+    try {
+        console.log('Loading highlights for document:', documentId);
+        const response = await fetch(`/api/highlights/${documentId}`);
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to load highlights');
+        }
+        
+        const highlights = await response.json();
+        console.log('Loaded highlights:', highlights);
+        
+        highlights.forEach(highlight => {
+            const section = document.querySelector(`#section-${highlight.section_index}`);
+            if (!section) {
+                console.error('Section not found:', highlight.section_index);
+                return;
+            }
+            
+            // Find the text node containing the highlight
+            const textNodes = getAllTextNodes(section);
+            let currentPos = 0;
+            let targetNode = null;
+            let offset = 0;
+            
+            for (const node of textNodes) {
+                const nodeLength = node.textContent.length;
+                if (currentPos + nodeLength > highlight.range_start) {
+                    targetNode = node;
+                    offset = highlight.range_start - currentPos;
+                    break;
+                }
+                currentPos += nodeLength;
+            }
+            
+            if (targetNode) {
+                try {
+                    const range = document.createRange();
+                    range.setStart(targetNode, offset);
+                    range.setEnd(targetNode, offset + highlight.text.length);
+                    
+                    const span = document.createElement('span');
+                    span.className = 'highlighted-text';
+                    span.dataset.highlightId = highlight.id;
+                    range.surroundContents(span);
+                    
+                    console.log('Highlight applied:', highlight.id);
+                } catch (error) {
+                    console.error('Error applying highlight:', {
+                        highlightId: highlight.id,
+                        error: error.message,
+                        nodeText: targetNode.textContent,
+                        offset,
+                        length: highlight.text.length
+                    });
+                }
+            } else {
+                console.error('Target node not found for highlight:', highlight);
+            }
+        });
+    } catch (error) {
+        console.error('Error loading highlights:', error);
+    }
+}
+
+function getAllTextNodes(element) {
+    const walker = document.createTreeWalker(
+        element,
+        NodeFilter.SHOW_TEXT,
+        {
+            acceptNode: function(node) {
+                // Skip text nodes in script and style elements
+                if (node.parentNode.nodeName === 'SCRIPT' || 
+                    node.parentNode.nodeName === 'STYLE') {
+                    return NodeFilter.FILTER_REJECT;
+                }
+                // Skip empty text nodes
+                if (node.textContent.trim() === '') {
+                    return NodeFilter.FILTER_REJECT;
+                }
+                return NodeFilter.FILTER_ACCEPT;
+            }
+        },
+        false
+    );
+    
+    const nodes = [];
+    let node;
+    while (node = walker.nextNode()) {
+        nodes.push(node);
+    }
+    return nodes;
+}
+
+function getCurrentSectionIndex() {
+    const activeSection = document.querySelector('.section-content.active');
+    return activeSection ? parseInt(activeSection.id.replace('section-', '')) : 0;
 }
 
 // Event listeners
