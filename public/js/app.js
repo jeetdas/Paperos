@@ -307,6 +307,39 @@ function displayResults(result) {
         markdownContent.appendChild(sectionNav);
         markdownContent.appendChild(sectionsContainer);
         
+        // Create sticky navigation buttons
+        const stickyNav = document.createElement('div');
+        stickyNav.className = 'sticky-nav-buttons';
+        stickyNav.innerHTML = `
+            <button class="nav-button prev-button" aria-label="Previous section" disabled>
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button class="nav-button next-button" aria-label="Next section">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        `;
+        
+        // Add click handlers for navigation buttons
+        const prevButton = stickyNav.querySelector('.prev-button');
+        const nextButton = stickyNav.querySelector('.next-button');
+        
+        prevButton.addEventListener('click', () => {
+            const currentIndex = parseInt(select.value);
+            if (currentIndex > 0) {
+                switchSection(currentIndex - 1);
+            }
+        });
+        
+        nextButton.addEventListener('click', () => {
+            const currentIndex = parseInt(select.value);
+            if (currentIndex < sections.length - 1) {
+                switchSection(currentIndex + 1);
+            }
+        });
+        
+        // Add sticky navigation to the document
+        document.body.appendChild(stickyNav);
+        
         // Set up image click handlers
         setupImageHandlers(markdownContent);
         
@@ -323,10 +356,16 @@ function displayResults(result) {
 function switchSection(index) {
     const sections = document.querySelectorAll('.section-content');
     const select = document.querySelector('.section-select');
+    const prevButton = document.querySelector('.prev-button');
+    const nextButton = document.querySelector('.next-button');
     
     sections.forEach(section => section.classList.remove('active'));
     sections[index].classList.add('active');
     select.value = index;
+    
+    // Update navigation button states
+    prevButton.disabled = index === 0;
+    nextButton.disabled = index === sections.length - 1;
     
     // Smooth scroll to the top of the new section
     sections[index].scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -421,52 +460,5 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         await processDocument(false);
-    });
-
-    // Copy text button
-    document.getElementById('copy-button').addEventListener('click', function() {
-        const markdownContent = document.getElementById('markdown-content');
-        const textToCopy = markdownContent.innerText;
-        
-        navigator.clipboard.writeText(textToCopy).then(() => {
-            const originalText = this.innerHTML;
-            this.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
-            
-            setTimeout(() => {
-                this.innerHTML = originalText;
-            }, 2000);
-        }).catch(err => {
-            console.error('Failed to copy text: ', err);
-        });
-    });
-
-    // Download button
-    document.getElementById('download-button').addEventListener('click', function() {
-        const markdownContent = document.getElementById('markdown-content').innerText;
-        const blob = new Blob([markdownContent], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        
-        a.href = url;
-        a.download = 'document_analysis.txt';
-        document.body.appendChild(a);
-        a.click();
-        
-        setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }, 100);
-    });
-
-    // New search button
-    document.getElementById('new-search-button').addEventListener('click', function() {
-        document.getElementById('url-form').reset();
-        document.getElementById('result-card').style.display = 'none';
-        
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        
-        setTimeout(() => {
-            document.getElementById('document-url').focus();
-        }, 500);
     });
 }); 
