@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paperos | Document Analysis</title>
+    
+    <!-- External CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+    
+    <!-- App CSS -->
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/markdown.css">
+    
+    <!-- External JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+</head>
+<body>
+    <div class="mobile-drawer" id="mobile-drawer">
+        <div class="mobile-drawer-header">
+            <div class="logo">
+                <i class="fa-solid fa-book-open-reader logo-icon"></i>
+                <span class="logo-text">Recent Documents</span>
+            </div>
+            <div class="header-actions">
+                <div class="theme-toggle" id="mobile-theme-toggle">
+                    <div class="theme-toggle-track">
+                        <i class="fa-solid fa-sun theme-toggle-icon"></i>
+                        <i class="fa-solid fa-moon theme-toggle-icon"></i>
+                    </div>
+                    <div class="theme-toggle-thumb"></div>
+                </div>
+                <button class="mobile-drawer-close" id="mobile-drawer-close">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="document-list" id="mobile-document-list">
+            <!-- Mobile documents will be populated here -->
+        </div>
+    </div>
+
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fa-solid fa-book-open-reader logo-icon"></i>
+                <span class="logo-text">Recent Documents</span>
+            </div>
+            <div class="recent-documents">
+                <div class="document-list" id="document-list">
+                    <!-- Documents will be populated here -->
+                </div>
+            </div>
+        </aside>
+        <div class="main-wrapper">
+            <header>
+                <div class="logo">
+                    <i class="fa-solid fa-book-open-reader logo-icon"></i>
+                    <span class="logo-text">Paperos</span>
+                </div>
+                <div class="header-actions">
+                    <button class="mobile-nav-toggle" id="mobile-nav-toggle">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div class="theme-toggle desktop-only" id="theme-toggle">
+                        <div class="theme-toggle-track">
+                            <i class="fa-solid fa-sun theme-toggle-icon"></i>
+                            <i class="fa-solid fa-moon theme-toggle-icon"></i>
+                        </div>
+                        <div class="theme-toggle-thumb"></div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="main-content">
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Extract Text from Documents</h2>
+                        <p class="card-subtitle">Enter a URL to a PDF, image, or document to extract text and generate markdown</p>
+                    </div>
+                    <form id="url-form">
+                        <div class="form-group">
+                            <label for="document-url">Document URL</label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-link input-icon"></i>
+                                <input 
+                                    type="url" 
+                                    id="document-url" 
+                                    name="document_url" 
+                                    required 
+                                    placeholder="https://example.com/paper.pdf"
+                                    autocomplete="off"
+                                >
+                            </div>
+                        </div>
+                        <button type="submit">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            Process Document
+                        </button>
+                    </form>
+                </section>
+
+                <section class="loading" id="loading">
+                    <div class="loading-content">
+                        <div class="loading-spinner">
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                        </div>
+                        <p class="loading-text">Analyzing document...</p>
+                        <div class="loading-progress">
+                            <div class="loading-progress-bar"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="card result-card" id="result-card">
+                    <div class="card-header">
+                        <h2 class="card-title">Document Analysis</h2>
+                        <p class="card-subtitle">Extracted text and images from your document</p>
+                    </div>
+                    <div class="markdown-content" id="markdown-content"></div>
+                    <div class="result-actions">
+                        <button class="action-button" id="copy-button">
+                            <i class="fa-solid fa-copy"></i>
+                            Copy Text
+                        </button>
+                        <button class="action-button" id="download-button">
+                            <i class="fa-solid fa-download"></i>
+                            Download
+                        </button>
+                        <button class="action-button" id="new-search-button">
+                            <i class="fa-solid fa-arrow-rotate-right"></i>
+                            New Search
+                        </button>
+                    </div>
+                </section>
+            </main>
+
+            <footer>
+                <p>Powered by Mistral AI.</p>
+            </footer>
+        </div>
+    </div>
+
+    <!-- App JavaScript -->
+    <script src="/js/app.js"></script>
+</body>
+</html> 
