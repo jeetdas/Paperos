@@ -1,6 +1,5 @@
 .markdown-content {
     background-color: var(--card-bg);
-    padding: 2rem;
     border-radius: var(--radius);
     color: var(--text);
     font-size: 1.05rem;

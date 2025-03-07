@@ -108,20 +108,15 @@ body {
     display: flex;
     flex-direction: column;
     gap: 2rem;
+    padding: 0 1rem;
 }
 
 footer {
     margin-top: 3rem;
+    padding-bottom: 2rem;
     padding-top: 1.5rem;
     border-top: 1px solid var(--border);
     text-align: center;
     color: var(--text-light);
     font-size: 0.875rem;
 }
-
-/* Responsive styles */
-@media (max-width: 768px) {
-    .main-wrapper {
-        padding: 0 1rem;
-    }
-} 

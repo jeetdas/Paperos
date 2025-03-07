@@ -1,148 +1,139 @@
-# Mistral OCR API
+# Paperos
 
-A simple JavaScript API wrapper for Mistral's OCR service. This API allows you to extract text from documents and images using Mistral's powerful OCR capabilities.
+A modern document analysis tool powered by Mistral AI. Paperos allows you to extract, analyze, and navigate through documents with a beautiful and intuitive interface.
 
 ## Features
 
-- Process OCR from document URLs
-- Generate and display markdown with embedded images
-- Simple, focused UI for quick document processing
+- 📄 Process documents from URLs (PDF, images)
+- 📝 Extract and format text with markdown
+- 🖼️ Preserve and display document images
+- 📱 Responsive design for mobile and desktop
+- 🌓 Dark/light theme support
+- 🔄 Document caching and history
+- ⌨️ Keyboard navigation support
+- 📊 Section-based document navigation
+
+## Prerequisites
+
+- Node.js 16 or higher
+- PostgreSQL 12 or higher
+- Mistral AI API key
 
 ## Installation
 
 1. Clone this repository:
-   ```
-   git clone <repository-url>
-   cd mistral_ocr
+   ```bash
+   git clone https://github.com/yourusername/paperos.git
+   cd paperos
    ```
 
 2. Install dependencies:
-   ```
+   ```bash
    npm install
    ```
 
-3. Create a `.env` file in the root directory with your Mistral API key:
+3. Set up the database:
+   ```bash
+   # Connect to PostgreSQL
+   psql postgres
+
+   # Create the database
+   CREATE DATABASE paperos;
+
+   # You can now exit psql
+   \q
    ```
-   MISTRAL_API_KEY=your_mistral_api_key_here
-   PORT=3000
+
+4. Configure environment variables:
+   ```bash
+   # Copy the sample environment file
+   cp .env-sample .env
+
+   # Edit the .env file with your settings:
+   # - Set your Mistral API key
+   # - Update database connection string if needed
+   # - Adjust port if needed
    ```
 
 ## Usage
 
-1. Start the server:
+1. Start the development server:
+   ```bash
+   npm run dev
    ```
+
+2. For production:
+   ```bash
    npm start
    ```
 
-2. The API will be available at `http://localhost:3000`
+3. Open your browser and navigate to `http://localhost:3000`
 
-## API Endpoint
+## API Endpoints
 
-### Process OCR from URL
+### Process Document
 
-```
+```http
 POST /api/ocr/url
-```
+Content-Type: application/json
 
-Request body:
-```json
 {
-  "document_url": "https://example.com/document.pdf"
+  "document_url": "https://example.com/document.pdf",
+  "force_refresh": false  // Optional: force reprocessing of cached documents
 }
 ```
 
-The API uses the following default values:
-- `model`: "mistral-ocr-latest"
-- `include_image_base64`: true
+### Get Recent Documents
 
-Optional parameters:
-- `document_name`: Name of the document
-- `pages`: Array of page numbers to process
-- `image_limit`: Maximum number of images to extract
-- `image_min_size`: Minimum size of images to extract
-
-## Example Usage
-
-### Using cURL
-
-```bash
-curl -X POST http://localhost:3000/api/ocr/url \
-  -H "Content-Type: application/json" \
-  -d '{
-    "document_url": "https://example.com/document.pdf"
-  }'
+```http
+GET /api/documents/recent
 ```
 
-### Using JavaScript Fetch API
+## Database Schema
 
-```javascript
-fetch('http://localhost:3000/api/ocr/url', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    document_url: 'https://example.com/document.pdf'
-  })
-})
-.then(response => response.json())
-.then(data => console.log(data))
-.catch(error => console.error('Error:', error));
+The application uses PostgreSQL with the following schema:
+
+```sql
+CREATE TABLE documents (
+  id SERIAL PRIMARY KEY,
+  url TEXT UNIQUE NOT NULL,
+  title TEXT,
+  content JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
-## Response Format
+## Environment Variables
 
-```json
-{
-  "pages": [
-    {
-      "page_num": 0,
-      "text": "Extracted text content...",
-      "markdown": "# Heading\n\nExtracted text with ![image1](image1) references",
-      "images": [
-        {
-          "id": "image1",
-          "url": "image_url",
-          "image_base64": "base64_encoded_image_data",
-          "width": 800,
-          "height": 600
-        }
-      ]
-    }
-  ],
-  "model": "mistral-ocr-latest",
-  "usage_info": {
-    "pages_processed": 1,
-    "doc_size_bytes": 1024000
-  },
-  "combined_markdown": "# Heading\n\nExtracted text with ![image1](data:image/jpeg;base64,...) references"
-}
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `PORT` | Server port number | No | 3000 |
+| `DATABASE_URL` | PostgreSQL connection string | Yes | - |
+| `MISTRAL_API_KEY` | Mistral AI API key | Yes | - |
+
+## Development
+
+The project structure:
+
 ```
-
-### Markdown Support
-
-The API includes markdown support with the following features:
-
-1. Each page in the OCR response includes a markdown field with text and image references
-2. The API processes these markdown files to replace image references with base64 data
-3. A `combined_markdown` field is added to the response with all pages combined
-
-## Web Interface
-
-The API includes a simple web interface for testing:
-
-1. Enter the document URL
-2. Click "Process OCR"
-3. View the rendered markdown content with embedded images
-
-## Error Handling
-
-The API returns appropriate HTTP status codes and error messages:
-
-- 400: Bad Request (missing required parameters)
-- 422: Validation Error (invalid parameters)
-- 500: Internal Server Error
+paperos/
+├── db/             # Database setup and queries
+├── public/         # Static files
+│   ├── css/       # Stylesheets
+│   ├── js/        # Client-side JavaScript
+│   └── index.html # Main HTML file
+├── routes/         # API routes
+├── services/       # Business logic
+└── index.js       # Application entry point
+```
 
 ## License
 
-MIT 
+MIT
+
+## Acknowledgments
+
+- Powered by [Mistral AI](https://mistral.ai)
+- Built with Express.js and PostgreSQL
+- UI components inspired by modern design practices 
